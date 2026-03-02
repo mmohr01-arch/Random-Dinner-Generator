@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(timeout:*)",
+      "Bash(curl:*)",
+      "Bash(ping:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(fuser:*)",
+      "Bash(npm start)",
+      "Bash(start:*)"
+    ]
+  }
+}

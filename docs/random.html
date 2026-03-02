@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dinner Ideas - Random Pick</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<nav>
+  <span class="brand">Dinner Ideas</span>
+  <a href="index.html">Recipes</a>
+  <a href="random.html" class="active">Random Pick</a>
+</nav>
+
+<div class="container">
+  <div class="random-wrapper">
+    <h1>What's for Dinner?</h1>
+
+    <button class="btn btn-primary btn-large" id="pick-btn">Get Random Recipe</button>
+
+    <div class="recipe-card" id="recipe-card">
+      <h2 id="card-name"></h2>
+      <p class="detail"><strong>Cook time:</strong> <span id="card-time"></span> minutes</p>
+      <a id="card-pdf" class="pdf-link" href="#" target="_blank" rel="noopener">View Recipe PDF</a>
+    </div>
+
+    <p class="empty-msg" id="empty-msg">No recipes available.</p>
+
+    <div class="btn-group" id="btn-group" style="display:none;">
+      <button class="btn btn-primary btn-large" id="another-btn">Pick Another</button>
+    </div>
+  </div>
+</div>
+
+<script src="recipes.js"></script>
+<script>
+const card = document.getElementById("recipe-card");
+const emptyMsg = document.getElementById("empty-msg");
+const btnGroup = document.getElementById("btn-group");
+
+function pickRandom() {
+  if (!recipes.length) {
+    card.classList.remove("visible");
+    btnGroup.style.display = "none";
+    emptyMsg.classList.add("visible");
+    return;
+  }
+  const r = recipes[Math.floor(Math.random() * recipes.length)];
+  document.getElementById("card-name").textContent = r.recipe_name;
+  document.getElementById("card-time").textContent = r.cook_time_minutes;
+  document.getElementById("card-pdf").href = r.pdf_link;
+  emptyMsg.classList.remove("visible");
+  card.classList.add("visible");
+  btnGroup.style.display = "flex";
+}
+
+document.getElementById("pick-btn").addEventListener("click", pickRandom);
+document.getElementById("another-btn").addEventListener("click", pickRandom);
+</script>
+</body>
+</html>

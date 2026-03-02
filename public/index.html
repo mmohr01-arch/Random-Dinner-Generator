@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dinner Ideas - Recipes</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<nav>
+  <span class="brand">Dinner Ideas</span>
+  <a href="index.html" class="active">Recipes</a>
+  <a href="random.html">Random Pick</a>
+</nav>
+
+<div class="container">
+  <h1>Manage Recipes</h1>
+
+  <!-- Add recipe form -->
+  <div class="form-card">
+    <h2>Add a Recipe</h2>
+    <form id="add-form">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="name">Recipe Name</label>
+          <input type="text" id="name" required />
+        </div>
+        <div class="form-group">
+          <label for="time">Cook Time (min)</label>
+          <input type="number" id="time" min="1" required />
+        </div>
+        <div class="form-group">
+          <label for="pdf">Recipe PDF</label>
+          <input type="file" id="pdf" accept=".pdf" required />
+        </div>
+        <button type="submit" class="btn btn-primary">Add</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Recipes table -->
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th data-col="recipe_name">Name <span class="sort-arrow"></span></th>
+          <th data-col="cook_time_minutes">Cook Time <span class="sort-arrow"></span></th>
+          <th data-col="pdf_link">PDF <span class="sort-arrow"></span></th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="recipe-body"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Edit modal -->
+<div class="modal-overlay" id="edit-overlay">
+  <div class="modal">
+    <h2>Edit Recipe</h2>
+    <form id="edit-form">
+      <input type="hidden" id="edit-id" />
+      <div class="form-group">
+        <label for="edit-name">Recipe Name</label>
+        <input type="text" id="edit-name" required />
+      </div>
+      <div class="form-group">
+        <label for="edit-time">Cook Time (min)</label>
+        <input type="number" id="edit-time" min="1" required />
+      </div>
+      <div class="form-group">
+        <label for="edit-pdf">Replace PDF (optional)</label>
+        <input type="file" id="edit-pdf" accept=".pdf" />
+        <small id="edit-pdf-current"></small>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-secondary" id="edit-cancel">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const API = "/api/recipes";
+let recipes = [];
+let sortCol = null;
+let sortAsc = true;
+
+async function loadRecipes() {
+  const res = await fetch(API);
+  recipes = await res.json();
+  renderTable();
+}
+
+function pdfDisplayName(link) {
+  if (link.startsWith("/uploads/")) {
+    return link.split("/").pop();
+  }
+  return link;
+}
+
+function renderTable() {
+  const tbody = document.getElementById("recipe-body");
+  tbody.innerHTML = "";
+
+  const sorted = [...recipes];
+  if (sortCol) {
+    sorted.sort((a, b) => {
+      const av = a[sortCol];
+      const bv = b[sortCol];
+      if (typeof av === "number") return sortAsc ? av - bv : bv - av;
+      return sortAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+    });
+  }
+
+  for (const r of sorted) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${esc(r.recipe_name)}</td>
+      <td>${r.cook_time_minutes} min</td>
+      <td><a href="${esc(r.pdf_link)}" target="_blank" rel="noopener">${esc(pdfDisplayName(r.pdf_link))}</a></td>
+      <td class="actions">
+        <button class="btn btn-primary" onclick="openEdit(${r.id})">Edit</button>
+        <button class="btn btn-danger" onclick="deleteRecipe(${r.id})">Delete</button>
+      </td>`;
+    tbody.appendChild(tr);
+  }
+
+  // Update sort arrows
+  document.querySelectorAll("thead th[data-col]").forEach((th) => {
+    const arrow = th.querySelector(".sort-arrow");
+    if (th.dataset.col === sortCol) {
+      arrow.textContent = sortAsc ? "\u25B2" : "\u25BC";
+    } else {
+      arrow.textContent = "";
+    }
+  });
+}
+
+function esc(str) {
+  const d = document.createElement("div");
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+// Sorting
+document.querySelectorAll("thead th[data-col]").forEach((th) => {
+  th.addEventListener("click", () => {
+    const col = th.dataset.col;
+    if (sortCol === col) {
+      sortAsc = !sortAsc;
+    } else {
+      sortCol = col;
+      sortAsc = true;
+    }
+    renderTable();
+  });
+});
+
+// Add recipe
+document.getElementById("add-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const form = new FormData();
+  form.append("recipe_name", document.getElementById("name").value.trim());
+  form.append("cook_time_minutes", document.getElementById("time").value);
+  form.append("pdf", document.getElementById("pdf").files[0]);
+  await fetch(API, { method: "POST", body: form });
+  e.target.reset();
+  loadRecipes();
+});
+
+// Delete recipe
+async function deleteRecipe(id) {
+  if (!confirm("Delete this recipe?")) return;
+  await fetch(`${API}/${id}`, { method: "DELETE" });
+  loadRecipes();
+}
+
+// Edit modal
+function openEdit(id) {
+  const r = recipes.find((x) => x.id === id);
+  if (!r) return;
+  document.getElementById("edit-id").value = r.id;
+  document.getElementById("edit-name").value = r.recipe_name;
+  document.getElementById("edit-time").value = r.cook_time_minutes;
+  document.getElementById("edit-pdf").value = "";
+  document.getElementById("edit-pdf-current").textContent = "Current: " + pdfDisplayName(r.pdf_link);
+  document.getElementById("edit-overlay").classList.add("open");
+}
+
+document.getElementById("edit-cancel").addEventListener("click", () => {
+  document.getElementById("edit-overlay").classList.remove("open");
+});
+
+document.getElementById("edit-overlay").addEventListener("click", (e) => {
+  if (e.target === e.currentTarget) {
+    e.currentTarget.classList.remove("open");
+  }
+});
+
+document.getElementById("edit-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const id = document.getElementById("edit-id").value;
+  const form = new FormData();
+  form.append("recipe_name", document.getElementById("edit-name").value.trim());
+  form.append("cook_time_minutes", document.getElementById("edit-time").value);
+  const pdfFile = document.getElementById("edit-pdf").files[0];
+  if (pdfFile) {
+    form.append("pdf", pdfFile);
+  }
+  await fetch(`${API}/${id}`, { method: "PUT", body: form });
+  document.getElementById("edit-overlay").classList.remove("open");
+  loadRecipes();
+});
+
+loadRecipes();
+</script>
+</body>
+</html>
